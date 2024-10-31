@@ -33,11 +33,11 @@ const App: React.FC = () => {
                     Add User
                   </button>
                 </div>
-                {/* Logout Button */}
+
                 <div className="logout-btn-container">
                   <Logout />
                 </div>
-                {/* Modal for Adding User */}
+
                 <div
                   className="modal fade"
                   id="exampleModal"
