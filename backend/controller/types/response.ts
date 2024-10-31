@@ -1,34 +1,28 @@
-interface BaseResponse {
-  message: string;
-}
-
-interface SuccessResponse<T> extends BaseResponse {
+interface SuccessResponse {
   success: true;
-  data?: T;
+  message: string;
+  data?: unknown;
 }
 
-interface ErrorResponse extends BaseResponse {
+interface ErrorResponse {
   success: false;
+  message: string;
   error?: string;
 }
 
-// Unified response function for both success and error cases
-export const createResponse = <T>(
-  success: boolean,
+export const successResponse = (
   message: string,
-  payload?: T | string
-): SuccessResponse<T> | ErrorResponse => {
-  if (success) {
-    return {
-      success: true,
-      message,
-      data: payload as T,
-    };
-  } else {
-    return {
-      success: false,
-      message,
-      error: payload as string,
-    };
-  }
-};
+  data?: unknown
+): SuccessResponse => ({
+  success: true,
+  message,
+  data,
+});
+export const errorResponse = (
+  message: string,
+  error?: string
+): ErrorResponse => ({
+  success: false,
+  message,
+  error,
+});

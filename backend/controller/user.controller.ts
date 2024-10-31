@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
-import { createResponse } from "./types/response";
+import { successResponse, errorResponse } from "./types/response";
 import {
   NotFound,
   ValidationError,
@@ -32,7 +32,7 @@ export class UserController {
     statusCode: number,
     data?: any
   ) {
-    return res.status(statusCode).json(createResponse(true, message, data));
+    return res.status(statusCode).json(successResponse(message, data));
   }
 
   private sendErrorResponse(res: Response, error: string | Error) {
@@ -48,7 +48,7 @@ export class UserController {
         : error instanceof UnexpectedError
         ? 500
         : 500;
-    return res.status(status).json(createResponse(false, message));
+    return res.status(status).json(errorResponse(message));
   }
 
   async signupUser(req: Request, res: Response): Promise<void> {
