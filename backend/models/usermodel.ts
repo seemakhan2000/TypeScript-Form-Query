@@ -14,5 +14,5 @@ const userSchema = new Schema({
   password: { type: String, required: true },
 });
 
-const ReactModel = mongoose.model<IUser>("React", userSchema);
-export default ReactModel;
+const userModel = mongoose.model<IUser>("userModel", userSchema);
+export default userModel;

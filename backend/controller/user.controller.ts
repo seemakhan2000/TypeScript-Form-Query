@@ -4,15 +4,11 @@ import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
 import { successResponse, errorResponse } from "./types/response";
-import {
-  NotFound,
-  ValidationError,
-  InvalidRequest,
-  UnexpectedError,
-} from "./errorResponse";
+import { NotFound, InvalidRequest } from "./errorResponse";
 import { validateSignupData } from "../models/signUpValidate";
 import { loginValidation } from "../models/loginValidation/loginValidation";
-import ReactModel from "../models/schema";
+import { userValidation } from "../models/userValidation/userValidation";
+import userModel from "../models/usermodel";
 import SignupModel from "../models/signupModel";
 import { getEnvVariable } from "./env";
 
@@ -35,37 +31,34 @@ export class UserController {
     return res.status(statusCode).json(successResponse(message, data));
   }
 
-  private sendErrorResponse(res: Response, error: string | Error) {
+  private sendErrorResponse(
+    res: Response,
+    error: string | Error,
+    statusCode: number = 500
+  ) {
     const message =
       typeof error === "string"
         ? error
         : error.message || "Internal Server Error";
-    const status =
-      error instanceof NotFound
-        ? 404
-        : error instanceof ValidationError || error instanceof InvalidRequest
-        ? 422
-        : error instanceof UnexpectedError
-        ? 500
-        : 500;
-    return res.status(status).json(errorResponse(message));
+    return res.status(statusCode).json(errorResponse(message));
   }
 
   async signupUser(req: Request, res: Response): Promise<void> {
-    const { username, email, phone, password } = req.body;
-
-    const { error, value } = validateSignupData(req.body);
-
-    if (error) {
-      this.sendErrorResponse(res, "Invalid signup data");
-      return;
-    }
-
     try {
+      const { username, email, phone, password } = req.body;
+
+      const { error, value } = validateSignupData(req.body);
+      if (error) {
+        this.sendErrorResponse(
+          res,
+          "Validation error: " + error.details[0].message,
+          422
+        );
+      }
       const existingUser = await SignupModel.findOne({ email });
 
       if (existingUser) {
-        this.sendErrorResponse(res, "User already exists");
+        this.sendErrorResponse(res, "User already exists", 409);
         return;
       }
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -81,16 +74,11 @@ export class UserController {
 
       this.sendSuccessResponse(res, "Signup successful", 200, newUser);
     } catch (error: any) {
-      if (
-        error instanceof ValidationError ||
-        error instanceof NotFound ||
-        error instanceof InvalidRequest
-      ) {
-        console.log(`${error.statusCode} Status Code: ${error.message}`);
+      if (error instanceof InvalidRequest) {
+        this.sendErrorResponse(res, "Invalid request format", 400);
       } else {
-        console.error("Signup error:", error);
+        this.sendErrorResponse(res, "Failed to create user", 500);
       }
-      this.sendErrorResponse(res, "Failed to create user");
     }
   }
 
@@ -103,21 +91,21 @@ export class UserController {
       if (error) {
         this.sendErrorResponse(
           res,
-          "Invalid data: " + error.details[0].message
+          "Invalid data: " + error.details[0].message,
+          400
         );
         return;
       }
       const user = await SignupModel.findOne({ email });
 
       if (!user) {
-        this.sendErrorResponse(res, "User not found");
+        this.sendErrorResponse(res, "User not found", 404);
         return;
       }
-
       const isPasswordValid = await bcrypt.compare(password, user.password);
 
       if (!isPasswordValid) {
-        this.sendErrorResponse(res, "Invalid password");
+        this.sendErrorResponse(res, "Invalid password", 401);
         return;
       }
 
@@ -128,61 +116,54 @@ export class UserController {
 
       this.sendSuccessResponse(res, "Login successful", 200, { token });
     } catch (error: any) {
-      if (
-        error instanceof ValidationError ||
-        error instanceof NotFound ||
-        error instanceof InvalidRequest
-      ) {
-        console.log(`${error.statusCode} Status Code: ${error.message}`);
+      if (error instanceof InvalidRequest) {
+        this.sendErrorResponse(res, error.message, 422);
       } else {
-        console.error("Login error:", error);
+        this.sendErrorResponse(res, "Failed to login", 500);
       }
-      this.sendErrorResponse(res, "Failed to login");
     }
   }
 
   async getUser(req: Request, res: Response): Promise<void> {
     try {
-      const result = await ReactModel.find();
+      const result = await userModel.find().select("-password");
       this.sendSuccessResponse(res, "Data retrieved successfully", 200, result);
     } catch (error: any) {
-      if (
-        error instanceof ValidationError ||
-        error instanceof NotFound ||
-        error instanceof InvalidRequest
-      ) {
-        console.log(`${error.statusCode} Status Code: ${error.message}`);
+      if (error instanceof NotFound) {
+        this.sendErrorResponse(res, error.message, 404);
       } else {
-        console.error("Get user error:", error);
+        this.sendErrorResponse(res, "Failed to retrieve data", 500);
       }
-      this.sendErrorResponse(res, "Failed to retrieve data");
     }
   }
+
   async postUser(req: Request, res: Response): Promise<void> {
     const user = req.body;
 
     const token = req.headers.authorization?.split(" ")[1];
+
     if (!token) {
-      this.sendErrorResponse(res, "Unauthorized: No token provided");
+      this.sendErrorResponse(res, "Unauthorized: No token provided", 401);
       return;
     }
-
     try {
+      const { error } = userValidation.validate(user);
+
+      if (error) {
+        this.sendErrorResponse(
+          res,
+          "Validation error: " + error.details[0].message,
+          422
+        );
+        return;
+      }
       const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
 
-      const savedUser = await ReactModel.create(user);
+      const savedUser = await userModel.create(user);
+
       this.sendSuccessResponse(res, "User saved successfully", 201, savedUser);
     } catch (error: any) {
-      if (
-        error instanceof ValidationError ||
-        error instanceof NotFound ||
-        error instanceof InvalidRequest
-      ) {
-        console.log(`${error.statusCode} Status Code: ${error.message}`);
-      } else {
-        console.error("Post user error:", error);
-      }
-      this.sendErrorResponse(res, "Failed to save user");
+      this.sendErrorResponse(res, "Failed to save user", 500);
     }
   }
 
@@ -191,7 +172,7 @@ export class UserController {
     const updateUser = req.body;
 
     if (!id || !mongoose.isValidObjectId(id)) {
-      this.sendErrorResponse(res, "Invalid User ID");
+      this.sendErrorResponse(res, "Invalid User ID", 400);
       return;
     }
 
@@ -202,12 +183,13 @@ export class UserController {
     }
 
     try {
-      const updatedUser = await ReactModel.findByIdAndUpdate(id, updateUser, {
+      const updatedUser = await userModel.findByIdAndUpdate(id, updateUser, {
         new: true,
+        runValidators: true,
       });
 
       if (!updatedUser) {
-        this.sendErrorResponse(res, "User not found");
+        this.sendErrorResponse(res, "User not found", 404);
         return;
       }
       this.sendSuccessResponse(
@@ -217,16 +199,7 @@ export class UserController {
         updatedUser
       );
     } catch (error: any) {
-      if (
-        error instanceof ValidationError ||
-        error instanceof NotFound ||
-        error instanceof InvalidRequest
-      ) {
-        console.log(`${error.statusCode} Status Code: ${error.message}`);
-      } else {
-        console.error("Update user error:", error);
-      }
-      this.sendErrorResponse(res, "Failed to update user");
+      this.sendErrorResponse(res, "Failed to update user", 500);
     }
   }
 
@@ -234,7 +207,7 @@ export class UserController {
     const id = req.params.id;
 
     if (!id || !mongoose.isValidObjectId(id)) {
-      this.sendErrorResponse(res, "Invalid User ID");
+      this.sendErrorResponse(res, "Invalid User ID", 400);
       return;
     }
 
@@ -245,7 +218,11 @@ export class UserController {
     }
 
     try {
-      const deletedUser = await ReactModel.findByIdAndDelete(id);
+      const deletedUser = await userModel.findByIdAndDelete(id);
+      if (!deletedUser) {
+        this.sendErrorResponse(res, "User not found", 404);
+      }
+
       this.sendSuccessResponse(
         res,
         "Data deleted successfully",
@@ -253,16 +230,7 @@ export class UserController {
         deletedUser
       );
     } catch (error: any) {
-      if (
-        error instanceof ValidationError ||
-        error instanceof NotFound ||
-        error instanceof InvalidRequest
-      ) {
-        console.log(`${error.statusCode} Status Code: ${error.message}`);
-      } else {
-        console.error("Delete user error:", error);
-      }
-      this.sendErrorResponse(res, "Failed to delete user");
+      this.sendErrorResponse(res, "Failed to delete user", 500);
     }
   }
 }
