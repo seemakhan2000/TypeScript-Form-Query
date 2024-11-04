@@ -5,7 +5,7 @@ import { userControllers } from "../controller/user.controller";
 import { verifyToken } from "../middleware/token";
 const userRouter = Router();
 
-userRouter.get("/get", userControllers.getUser);
+userRouter.get("/get", userControllers.getUsers);
 userRouter.post("/", verifyToken, userControllers.postUser);
 userRouter.delete("/delete/:id", verifyToken, userControllers.deleteUser);
 userRouter.put("/update/:id", verifyToken, userControllers.updateUser);

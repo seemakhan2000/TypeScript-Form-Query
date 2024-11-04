@@ -4,19 +4,29 @@ import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
 import { successResponse, errorResponse } from "./types/response";
-import { NotFound, InvalidRequest } from "./errorResponse";
+import {
+  NotFound,
+  InvalidRequest,
+  UserExistsError,
+  UserNotFoundError,
+  InvalidPasswordError,
+  InvalidIDError,
+  ValidationError,
+} from "./errorResponse";
 import { validateSignupData } from "../models/signUpValidate";
 import { loginValidation } from "../models/loginValidation/loginValidation";
 import { userValidation } from "../models/userValidation/userValidation";
+import { updateUserValidation } from "../models/updateUserValidation/updateUserValidation";
 import userModel from "../models/usermodel";
 import SignupModel from "../models/signupModel";
+import { BaseError } from "./errorResponse";
 import { getEnvVariable } from "./env";
 
 export class UserController {
   constructor() {
     this.signupUser = this.signupUser.bind(this);
     this.loginUser = this.loginUser.bind(this);
-    this.getUser = this.getUser.bind(this);
+    this.getUsers = this.getUsers.bind(this);
     this.postUser = this.postUser.bind(this);
     this.updateUser = this.updateUser.bind(this);
     this.deleteUser = this.deleteUser.bind(this);
@@ -34,32 +44,38 @@ export class UserController {
   private sendErrorResponse(
     res: Response,
     error: string | Error,
-    statusCode: number = 500
+    defaultStatusCode: number = 500
   ) {
-    const message =
-      typeof error === "string"
-        ? error
-        : error.message || "Internal Server Error";
+    let message = "Internal Server Error";
+    let statusCode = defaultStatusCode;
+
+    if (error instanceof BaseError) {
+      message = error.message;
+      statusCode = error.statusCode;
+    } else if (typeof error === "string") {
+      message = error;
+    } else if (error.message) {
+      message = error.message;
+    }
+
     return res.status(statusCode).json(errorResponse(message));
   }
 
   async signupUser(req: Request, res: Response): Promise<void> {
     try {
-      const { username, email, phone, password } = req.body;
-
       const { error, value } = validateSignupData(req.body);
       if (error) {
-        this.sendErrorResponse(
-          res,
-          "Validation error: " + error.details[0].message,
-          422
+        throw new InvalidRequest(
+          "Validation error: " + error.details[0].message
         );
       }
+
+      const { username, email, phone, password } = req.body;
+
       const existingUser = await SignupModel.findOne({ email });
 
       if (existingUser) {
-        this.sendErrorResponse(res, "User already exists", 409);
-        return;
+        throw new UserExistsError();
       }
       const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -74,10 +90,14 @@ export class UserController {
 
       this.sendSuccessResponse(res, "Signup successful", 200, newUser);
     } catch (error: any) {
-      if (error instanceof InvalidRequest) {
-        this.sendErrorResponse(res, "Invalid request format", 400);
+      if (error instanceof UserExistsError) {
+        res
+          .status(error.statusCode)
+          .json({ success: false, message: error.message });
+      } else if (error instanceof InvalidRequest) {
+        this.sendErrorResponse(res, error);
       } else {
-        this.sendErrorResponse(res, "Failed to create user", 500);
+        this.sendErrorResponse(res, "Failed to create user");
       }
     }
   }
@@ -87,26 +107,19 @@ export class UserController {
       const { phone, email, password } = req.body;
 
       const { error } = loginValidation.validate(req.body);
-
       if (error) {
-        this.sendErrorResponse(
-          res,
-          "Invalid data: " + error.details[0].message,
-          400
-        );
-        return;
+        throw new InvalidRequest("Invalid data: " + error.details[0].message);
       }
+
       const user = await SignupModel.findOne({ email });
 
       if (!user) {
-        this.sendErrorResponse(res, "User not found", 404);
-        return;
+        throw new UserNotFoundError();
       }
       const isPasswordValid = await bcrypt.compare(password, user.password);
 
       if (!isPasswordValid) {
-        this.sendErrorResponse(res, "Invalid password", 401);
-        return;
+        throw new InvalidPasswordError();
       }
 
       const jwtSecret = getEnvVariable("JWT_SECRET");
@@ -116,23 +129,30 @@ export class UserController {
 
       this.sendSuccessResponse(res, "Login successful", 200, { token });
     } catch (error: any) {
-      if (error instanceof InvalidRequest) {
-        this.sendErrorResponse(res, error.message, 422);
-      } else {
-        this.sendErrorResponse(res, "Failed to login", 500);
+      if (
+        error instanceof InvalidPasswordError ||
+        error instanceof UserNotFoundError ||
+        error instanceof InvalidRequest
+      ) {
+        this.sendErrorResponse(res, error);
       }
+
+      this.sendErrorResponse(res, "Failed to login");
     }
   }
 
-  async getUser(req: Request, res: Response): Promise<void> {
+  async getUsers(req: Request, res: Response): Promise<void> {
     try {
       const result = await userModel.find().select("-password");
+      if (!result || result.length === 0) {
+        throw new NotFound("User not found");
+      }
       this.sendSuccessResponse(res, "Data retrieved successfully", 200, result);
     } catch (error: any) {
       if (error instanceof NotFound) {
-        this.sendErrorResponse(res, error.message, 404);
+        this.sendErrorResponse(res, error);
       } else {
-        this.sendErrorResponse(res, "Failed to retrieve data", 500);
+        this.sendErrorResponse(res, "Failed to retrieve data");
       }
     }
   }
@@ -143,27 +163,37 @@ export class UserController {
     const token = req.headers.authorization?.split(" ")[1];
 
     if (!token) {
-      this.sendErrorResponse(res, "Unauthorized: No token provided", 401);
+      this.sendErrorResponse(
+        res,
+        new InvalidRequest("Unauthorized: No token provided")
+      );
       return;
     }
+
     try {
       const { error } = userValidation.validate(user);
-
       if (error) {
-        this.sendErrorResponse(
-          res,
-          "Validation error: " + error.details[0].message,
-          422
+        throw new InvalidRequest(
+          "Validation error: " + error.details[0].message
         );
-        return;
       }
+
+      const existingUser = await userModel.findOne({ email: user.email });
+      if (existingUser) {
+        throw new UserExistsError();
+      }
+
       const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
 
       const savedUser = await userModel.create(user);
 
       this.sendSuccessResponse(res, "User saved successfully", 201, savedUser);
     } catch (error: any) {
-      this.sendErrorResponse(res, "Failed to save user", 500);
+      if (error instanceof InvalidRequest || error instanceof UserExistsError) {
+        this.sendErrorResponse(res, error);
+      } else {
+        this.sendErrorResponse(res, "Failed to save user");
+      }
     }
   }
 
@@ -172,26 +202,31 @@ export class UserController {
     const updateUser = req.body;
 
     if (!id || !mongoose.isValidObjectId(id)) {
-      this.sendErrorResponse(res, "Invalid User ID", 400);
+      this.sendErrorResponse(res, new InvalidIDError());
       return;
     }
 
     const token = req.headers.authorization?.split(" ")[1];
     if (!token) {
-      this.sendErrorResponse(res, "Unauthorized: No token provided");
+      this.sendErrorResponse(
+        res,
+        new InvalidRequest("Unauthorized: No token provided")
+      );
       return;
     }
 
     try {
+      const { error } = updateUserValidation.validate(updateUser);
+      if (error) {
+        throw new InvalidRequest(
+          "Validation error: " + error.details[0].message
+        );
+      }
       const updatedUser = await userModel.findByIdAndUpdate(id, updateUser, {
         new: true,
         runValidators: true,
       });
 
-      if (!updatedUser) {
-        this.sendErrorResponse(res, "User not found", 404);
-        return;
-      }
       this.sendSuccessResponse(
         res,
         "Data updated successfully",
@@ -199,7 +234,16 @@ export class UserController {
         updatedUser
       );
     } catch (error: any) {
-      this.sendErrorResponse(res, "Failed to update user", 500);
+      if (error instanceof ValidationError) {
+        this.sendErrorResponse(res, new ValidationError(error.message));
+      } else if (
+        error instanceof InvalidRequest ||
+        error instanceof InvalidIDError
+      ) {
+        this.sendErrorResponse(res, error);
+      } else {
+        this.sendErrorResponse(res, "Failed to update user");
+      }
     }
   }
 
@@ -207,7 +251,7 @@ export class UserController {
     const id = req.params.id;
 
     if (!id || !mongoose.isValidObjectId(id)) {
-      this.sendErrorResponse(res, "Invalid User ID", 400);
+      this.sendErrorResponse(res, "Invalid User ID");
       return;
     }
 
