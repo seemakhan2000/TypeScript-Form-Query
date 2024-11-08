@@ -29,11 +29,20 @@ export const addUser = async (userData: FormValue) => {
   }
 };
 
-export const fetchUsers = async () => {
-  const response = await axios.get<{ data: UserData[] }>(`${API_URL}/user/get`);
-  return response.data.data;
+export const fetchUsers = async (page: number, limit: number) => {
+  try {
+    const response = await axios.get(`${API_URL}/user/get`, {
+      params: { page, limit },
+    });
+    return {
+      users: response.data.data.users,
+      totalCount: response.data.data.pagination.totalUsers,
+    };
+  } catch (error) {
+    console.error("Error fetching users:", error);
+  }
 };
-// Delete User
+
 export const deleteUser = async (id: string) => {
   if (!getToken()) {
     console.log("No token found, redirecting to login.");
@@ -54,7 +63,6 @@ export const deleteUser = async (id: string) => {
   }
 };
 
-// Update User
 export const updateUser = async (updatedUser: UserData) => {
   if (!getToken()) {
     console.log("No token found, redirecting to login.");

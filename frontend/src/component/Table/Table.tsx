@@ -1,67 +1,49 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useQuery } from "react-query";
-
 import { fetchUsers } from "../../services/userService";
 import { UserData } from "../type/type";
-import "./table.css";
-
 import {
   useDeleteUserMutation,
   useUpdateUserMutation,
 } from "../../mutation/mutation";
+import "./table.css";
 
 const Table: React.FC = () => {
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [limit] = useState(3);
 
-  const { data: submittedData = [], isLoading } = useQuery<UserData[]>(
-    "users",
-    fetchUsers
+  const {
+    data: { users, totalCount } = { users: [], totalCount: 0 },
+    isLoading,
+    isError,
+    error,
+  } = useQuery(["users", currentPage, limit], () =>
+    fetchUsers(currentPage, limit)
   );
 
+  const totalPages = Math.ceil(totalCount / limit);
   const deleteUserMutation = useDeleteUserMutation();
   const updateUserMutation = useUpdateUserMutation();
 
-  const handleDelete = (id: string) => {
-    deleteUserMutation.mutate(id);
-  };
-
+  const handleDelete = (id: string) => deleteUserMutation.mutate(id);
   const handleEditClick = (user: UserData) => {
     setEditingUser(user);
     setShowModal(true);
   };
-
-  const handleModalClose = () => {
-    setShowModal(false);
-    setEditingUser(null);
+  const handleModalClose = () => setShowModal(false);
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
   };
 
-  useEffect(() => {
-    if (submittedData.length > 0) {
-      console.log("Submitted Data:", submittedData);
-    }
-  }, [submittedData]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (editingUser) {
-      setEditingUser({
-        ...editingUser,
-        [e.target.name]: e.target.value,
-      });
-    }
-  };
-
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingUser) {
-      updateUserMutation.mutate(editingUser);
-      handleModalClose();
-    }
-  };
-
-  if (isLoading) {
-    return <div className="loader"></div>;
-  }
+  if (isLoading) return <div className="loader"></div>;
+  if (isError)
+    return (
+      <div>
+        Error: {error instanceof Error ? error.message : "Something went wrong"}
+      </div>
+    );
 
   return (
     <div>
@@ -78,7 +60,14 @@ const Table: React.FC = () => {
                 ></button>
               </div>
               <div className="modal-body">
-                <form onSubmit={handleFormSubmit}>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (editingUser) updateUserMutation.mutate(editingUser);
+                    handleModalClose();
+                  }}
+                >
+                  {/* Form fields */}
                   <div className="mb-3">
                     <label htmlFor="username" className="form-label">
                       Name
@@ -89,12 +78,18 @@ const Table: React.FC = () => {
                       id="username"
                       name="username"
                       value={editingUser.username}
-                      onChange={handleInputChange}
+                      onChange={(e) =>
+                        setEditingUser({
+                          ...editingUser,
+                          username: e.target.value,
+                        })
+                      }
                     />
                   </div>
+                  {/* Email */}
                   <div className="mb-3">
                     <label htmlFor="email" className="form-label">
-                      Email address
+                      Email
                     </label>
                     <input
                       type="email"
@@ -102,9 +97,15 @@ const Table: React.FC = () => {
                       id="email"
                       name="email"
                       value={editingUser.email}
-                      onChange={handleInputChange}
+                      onChange={(e) =>
+                        setEditingUser({
+                          ...editingUser,
+                          email: e.target.value,
+                        })
+                      }
                     />
                   </div>
+                  {/* Phone */}
                   <div className="mb-3">
                     <label htmlFor="phone" className="form-label">
                       Phone
@@ -115,7 +116,12 @@ const Table: React.FC = () => {
                       id="phone"
                       name="phone"
                       value={editingUser.phone}
-                      onChange={handleInputChange}
+                      onChange={(e) =>
+                        setEditingUser({
+                          ...editingUser,
+                          phone: e.target.value,
+                        })
+                      }
                     />
                   </div>
                   <button
@@ -126,12 +132,12 @@ const Table: React.FC = () => {
                   </button>
                 </form>
               </div>
-              <div className="modal-footer"></div>
             </div>
           </div>
         </div>
       )}
 
+      {/* User Table */}
       <table className="table" id="myTable">
         <thead className="table-dark">
           <tr className="th">
@@ -143,22 +149,22 @@ const Table: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {submittedData.map((data, index) => (
-            <tr key={data._id}>
-              <td>{index + 1}</td>
-              <td>{data.username}</td>
-              <td>{data.email}</td>
-              <td>{data.phone}</td>
+          {users.map((user: UserData, index: number) => (
+            <tr key={user._id}>
+              <td>{(currentPage - 1) * limit + index + 1}</td>
+              <td>{user.username}</td>
+              <td>{user.email}</td>
+              <td>{user.phone}</td>
               <td>
                 <button
                   className="btn btn-danger"
-                  onClick={() => handleDelete(data._id)}
+                  onClick={() => handleDelete(user._id)}
                 >
                   <i className="fas fa-trash" />
                 </button>
                 <button
                   className="btn btn-danger"
-                  onClick={() => handleEditClick(data)}
+                  onClick={() => handleEditClick(user)}
                 >
                   <i className="fas fa-pencil-alt" />
                 </button>
@@ -167,6 +173,19 @@ const Table: React.FC = () => {
           ))}
         </tbody>
       </table>
+
+      {/* Pagination  */}
+      <div className="pagination-buttons">
+        {Array.from({ length: totalPages }, (_, index) => (
+          <button
+            key={index + 1}
+            onClick={() => handlePageChange(index + 1)}
+            disabled={currentPage === index + 1}
+          >
+            {index + 1}
+          </button>
+        ))}
+      </div>
     </div>
   );
 };

@@ -143,11 +143,34 @@ export class UserController {
 
   async getUsers(req: Request, res: Response): Promise<void> {
     try {
-      const result = await userModel.find().select("-password");
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 3;
+      const skip = (page - 1) * limit;
+      const result = await userModel
+        .find()
+        .select("-password")
+        .skip(skip)
+        .limit(limit);
+      const totalUsers = await userModel.countDocuments();
+
       if (!result || result.length === 0) {
         throw new NotFound("User not found");
       }
-      this.sendSuccessResponse(res, "Data retrieved successfully", 200, result);
+      const pagination = {
+        totalUsers,
+        totalPages: Math.ceil(totalUsers / limit),
+        currentPage: page,
+        limit: limit,
+      };
+
+      res.status(200).json({
+        message: "Data retrieved successfully",
+        status: 200,
+        data: {
+          users: result,
+          pagination,
+        },
+      });
     } catch (error: any) {
       if (error instanceof NotFound) {
         this.sendErrorResponse(res, error);
