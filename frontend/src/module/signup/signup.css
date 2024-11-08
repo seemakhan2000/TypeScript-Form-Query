@@ -1,0 +1,46 @@
+.signup-form {
+  height: 71%;
+  width: 90%;
+  max-width: 450px;
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 50px 60px 70px;
+  border-radius: 10px;
+  background-color: lightyellow;
+  transition: opacity 0.3s ease;
+  opacity: 1;
+}
+
+.Signup-button {
+  border-radius: 8px;
+  background-color: rgb(87, 167, 252);
+  border-color: rgb(87, 167, 252);
+  color: white;
+  height: 40px;
+  width: 101%;
+}
+
+.container {
+  margin-left: 390px;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+  width: 168%;
+  max-width: 435px;
+  padding: 54px 25px 92px;
+}
+
+.custom-link-class {
+  margin-bottom: 31px;
+  margin-left: -266px;
+  position: absolute;
+  left: 341px;
+  bottom: 16px;
+}
+
+.text-center {
+  text-align: center !important;
+  margin-top: -17px;
+}

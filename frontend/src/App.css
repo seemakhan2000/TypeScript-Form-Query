@@ -1,0 +1,135 @@
+.first {
+  width: 693px;
+  margin-left: 42px;
+}
+.modal-title {
+  height: 25px;
+  margin-bottom: 22px;
+  margin-top: -2px;
+}
+.tbody {
+  background-color: aliceblue;
+}
+.containers {
+  max-width: 844px;
+  height: 750;
+  border: 5px solid rgb(194, 189, 189);
+  background-color: black;
+  width: 522px;
+}
+.modal-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1rem;
+  border-bottom: 1px solid black;
+  border-top-left-radius: calc(0.3rem - 1px);
+  border-top-right-radius: calc(0.3rem - 1px);
+  background-color: aqua;
+  color: black;
+  text-align: center;
+  font-size: 20px; /* Adjust the font size to your preference */
+}
+
+tbody,
+td,
+tfoot,
+th,
+thead,
+tr {
+  border-color: inherit;
+  border-style: solid;
+  border-width: 20;
+}
+.tbody {
+  background-color: beige;
+}
+.modal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0.75rem;
+  border-top: 1px solid #dee2e6;
+  border-bottom-right-radius: calc(0.3rem - 1px);
+  border-bottom-left-radius: calc(0.3rem - 1px);
+  background-color: aqua;
+}
+
+.edit-user {
+  margin-top: 8px;
+}
+
+.modal-body {
+  position: relative;
+  flex: 1 1 auto;
+  padding: var(--bs-modal-padding);
+  background-color: white;
+}
+
+.save-changes {
+  margin-left: 339px;
+}
+
+.form-label {
+  color: white;
+  margin-left: 29px;
+}
+
+.modal-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 105%;
+  pointer-events: auto;
+  background-color: #fff;
+  background-clip: padding-box;
+  border: 1px solid rgba(0, 0, 0, 0.452);
+  border-radius: 0.3rem;
+  outline: 0;
+}
+
+.form-control {
+  margin-left: 23px;
+  display: block;
+  width: 91%;
+  padding: 0.375rem 0.75rem;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: #212529;
+  background-color: #fff;
+  background-clip: padding-box;
+  border: 1px solid #ced4da;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border-radius: 0.25rem;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.modal-body {
+  position: relative;
+  flex: 1 1 auto;
+  padding: var(--bs-modal-padding);
+  background-color: black;
+}
+
+/* Hide spin buttons for Chrome, Safari, Edge, Opera */
+.code::-webkit-outer-spin-button,
+.code::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.addButtonContainer {
+  margin-left: 200px;
+  margin-bottom: -38px;
+}
+
+.logout-btn-container {
+  margin-bottom: 2px;
+  margin-left: 300px;
+}

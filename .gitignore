@@ -1,0 +1,28 @@
+# Node modules
+node_modules/
+
+# Logs
+*.log
+
+# Runtime files
+pids/
+*.pid
+*.pid.lock
+
+# Directory for test coverage
+coverage/
+
+# Dependency directories
+jspm_packages/
+.env
+
+# Build directory
+/frontend/build
+
+# Ignore ESLint config
+/frontend/eslint.config.js
+
+# Ignore specific CSS files
+main.5de1009f.css
+# Ignore all main CSS files
+main.*.css

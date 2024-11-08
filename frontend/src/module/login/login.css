@@ -1,0 +1,73 @@
+/* Login.css */
+body {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  background-position: center;
+  background-color: lightblue;
+}
+
+.container {
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+  width: 90%;
+  max-width: 450px;
+  padding: 200px 33px 173px;
+}
+
+.login-form {
+  height: 62%;
+  width: 118%;
+  max-width: 450px;
+  position: absolute;
+  top: 46%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 50px 60px 70px;
+  border-radius: 10px;
+  background-color: lightyellow;
+  transition: opacity 0.3s ease;
+  opacity: 1;
+  height: 59;
+}
+.form-control {
+  border-radius: 8px;
+}
+
+.btn {
+  border-radius: 8px;
+}
+
+.btn-secondary {
+  background-color: #848f9b;
+  border-color: #848f9b;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+  border-color: #0056b3;
+}
+
+.an {
+  position: absolute;
+  left: 330px;
+  bottom: -75px;
+}
+
+.text {
+  text-align: center !important;
+  margin-top: -50px;
+}
+
+.country-code {
+  max-width: 119px;
+}
+
+.me-2 {
+  width: 106px;
+}
+
+.abc {
+  margin-left: -8px;
+}
